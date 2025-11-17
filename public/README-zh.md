@@ -24,6 +24,11 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
+或者
+
+```bash
+pip install mcp-tool-tingz
+```
 
 ## 定义工具
 

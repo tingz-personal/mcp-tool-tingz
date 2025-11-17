@@ -27,6 +27,12 @@ source .venv/bin/activate
 pip install -e .
 ```
 
+OR
+
+```bash
+pip install mcp-tool-tingz
+```
+
 ## Defining tools
 
 Use the `@tool` decorator exported from the package:
