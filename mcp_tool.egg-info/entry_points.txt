@@ -1,0 +1,2 @@
+[console_scripts]
+mcp-tool = mcp_tool.cli:main
