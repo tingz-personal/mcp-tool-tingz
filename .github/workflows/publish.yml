@@ -1,0 +1,76 @@
+name: Publish to PyPI/TestPyPI
+
+# 触发条件配置
+on:
+  push:
+    branches:
+      - main  # 推送到 main 分支时触发（通常用于正式发布）
+      - test  # 推送到 test 分支时触发（用于测试发布）
+
+jobs:
+  build-and-publish:
+    name: Build and publish
+    runs-on: ubuntu-latest # 使用最新版本的 Ubuntu 环境运行
+    permissions:
+      contents: read # 授予读取仓库内容的权限
+
+    steps:
+      # 1. 检出代码
+      # 使用 actions/checkout Action 将仓库代码检出到运行环境
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 设置 Python 环境
+      # 使用 actions/setup-python Action 安装指定版本的 Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14" # 根据你的项目需求选择版本
+
+      # 3. 安装构建工具
+      # 升级 pip 并安装 build 模块，用于构建 Python 包
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      # 4. 构建分发包
+      # 生成 Wheel 文件 (.whl) 和源码包 (.tar.gz) 到 dist/ 目录
+      - name: Build package
+        run: python -m build
+
+      # 5. [Test 分支] 发布到 TestPyPI
+      # 仅当当前分支是 'test' 时执行
+      # 使用 pypa/gh-action-pypi-publish Action 发布包
+      - name: Publish to TestPyPI
+        if: github.ref == 'refs/heads/test'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/ # 指定 TestPyPI 的上传 URL
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }} # 从 GitHub Secrets 获取 TestPyPI 的 API Token
+          skip-existing: true # 如果版本号已存在则跳过，防止报错，适合重复测试
+
+      # 6. [Main 分支] 发布到正式 PyPI
+      # 仅当当前分支是 'main' 时执行
+      - name: Publish to PyPI
+        if: github.ref == 'refs/heads/main'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }} # 从 GitHub Secrets 获取正式 PyPI 的 API Token
+      
+      # 7. 发送 Telegram 通知
+      - name: Send Telegram Notification
+        if: always() # 无论成功失败都执行
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }} 
+          token: ${{ secrets.TELEGRAM_TOKEN }} 
+          message: |
+            📦 构建结果通知(mcp-tool-tingz项目): ${{ job.status }} 
+            
+            项目: ${{ github.repository }} 
+            分支: ${{ github.ref_name }} 
+            提交者: ${{ github.actor }}
+            提交信息: ${{ github.event.head_commit.message }}
+            
+            查看详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
